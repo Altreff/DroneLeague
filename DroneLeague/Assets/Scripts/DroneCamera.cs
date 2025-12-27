@@ -4,6 +4,8 @@ public class CameraController : MonoBehaviour
 {
     [Header("Target")]
     public Transform target;          // DroneRigid here
+    public Vector3 offset = new Vector3(0, 4, -8);
+    public float smoothSpeed = 5f;
 
     [Header("Camera Offset")]
     public float distance = 8f;       // how far behind the drone
@@ -37,9 +39,9 @@ public class CameraController : MonoBehaviour
         float mouseX = Input.GetAxis("Mouse X");
         float mouseY = Input.GetAxis("Mouse Y");
 
-        yaw   += mouseX * mouseSensitivity;
+        yaw += mouseX * mouseSensitivity;
         pitch -= mouseY * mouseSensitivity;
-        pitch  = Mathf.Clamp(pitch, minPitch, maxPitch);
+        pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
 
         Quaternion desiredRot = Quaternion.Euler(pitch, yaw, 0f);
 

@@ -1,21 +1,33 @@
 using UnityEngine;
 
+public enum DroneRole
+{
+    None,
+    Attacker,
+    Defender
+}
+
 [RequireComponent(typeof(Rigidbody), typeof(Collider))]
 public class DroneController : MonoBehaviour
 {
+    public DroneRole role = DroneRole.None;
+
+    [Header("Control Settings")]
+    public bool isHuman = false;
+
     [Header("References")]
     public CameraController cameraController; // Main Camera script
 
     [Header("Strafe")]
     public float maxHorizontalSpeed = 20f;  // A/D + backward
-    public float maxVerticalSpeed   = 8f;   // Space / Ctrl
+    public float maxVerticalSpeed = 8f;   // Space / Ctrl
     public float strafeAcceleration = 40f;  // how fast to reach strafe/hover speed
 
     [Header("Forward Flight")]
-    public float planeMaxForwardSpeed   = 25f;  // forward speed when W is held
-    public float planeForwardAccel      = 20f;  // acceleration for forward speed
-    public float turnSpeed              = 90f;  // deg/sec rotation toward camera target
-    public float aimDistance            = 40f;  // distance of invisible target in front of camera
+    public float planeMaxForwardSpeed = 25f;  // forward speed when W is held
+    public float planeForwardAccel = 20f;  // acceleration for forward speed
+    public float turnSpeed = 90f;  // deg/sec rotation toward camera target
+    public float aimDistance = 40f;  // distance of invisible target in front of camera
 
     [Header("Damping")]
     public float lateralDamping = 2f;          // extra damping of unwanted drift
@@ -41,6 +53,16 @@ public class DroneController : MonoBehaviour
 
     void Update()
     {
+        if (!isHuman)
+        {
+            inputH = 0f;
+            inputV = 0f;
+            inputUpDown = 0f;
+
+            throttle = Mathf.MoveTowards(throttle, 0f, Time.deltaTime * 2f);
+            return;
+        }
+
         // --- INPUT (same as before) ---
         inputH = Input.GetAxis("Horizontal");  // A/D
         inputV = Input.GetAxis("Vertical");    // W/S
@@ -77,7 +99,7 @@ public class DroneController : MonoBehaviour
             if (toTarget.sqrMagnitude > 0.001f)
             {
                 Vector3 desiredForward = toTarget.normalized;
-                Quaternion targetRot   = Quaternion.LookRotation(desiredForward, Vector3.up);
+                Quaternion targetRot = Quaternion.LookRotation(desiredForward, Vector3.up);
 
                 Quaternion newRot = Quaternion.RotateTowards(
                     rb.rotation,
@@ -91,11 +113,12 @@ public class DroneController : MonoBehaviour
         // If W not pressed → no auto-turning; you can hover / strafe and just look around.
 
         // Current velocity split into forward + sideways components
-        Vector3 vel        = rb.linearVelocity;
+        Vector3 vel = rb.linearVelocity;
         Vector3 forwardDir = transform.forward;
-        float   forwardSpeed = Vector3.Dot(vel, forwardDir);
-        Vector3 forwardVel   = forwardDir * forwardSpeed;
-        Vector3 lateralVel   = vel - forwardVel;
+        float forwardSpeed = Vector3.Dot(vel, forwardDir);
+        Vector3 forwardVel = forwardDir * forwardSpeed;
+        Vector3 lateralVel = vel - forwardVel;
+
 
         // ======================================================
         // 2. STRAFE / HOVER (A/D, S, Space, Ctrl)  — classic mode for sideways / vertical
@@ -124,8 +147,8 @@ public class DroneController : MonoBehaviour
             moveHorizontal.Normalize();
 
         Vector3 desiredLateralHorizontal = moveHorizontal * maxHorizontalSpeed;
-        Vector3 desiredLateralVertical   = Vector3.up * (inputUpDown * maxVerticalSpeed);
-        Vector3 desiredLateralVel        = desiredLateralHorizontal + desiredLateralVertical;
+        Vector3 desiredLateralVertical = Vector3.up * (inputUpDown * maxVerticalSpeed);
+        Vector3 desiredLateralVel = desiredLateralHorizontal + desiredLateralVertical;
 
         // Move lateralVel towards desiredLateralVel
         Vector3 lateralDelta = desiredLateralVel - lateralVel;
@@ -151,8 +174,8 @@ public class DroneController : MonoBehaviour
         // Recalculate velocity after our forces
         vel = rb.linearVelocity;
         forwardSpeed = Vector3.Dot(vel, forwardDir);
-        forwardVel   = forwardDir * forwardSpeed;
-        lateralVel   = vel - forwardVel;
+        forwardVel = forwardDir * forwardSpeed;
+        lateralVel = vel - forwardVel;
 
         rb.AddForce(-lateralVel * lateralDamping * dt, ForceMode.VelocityChange);
     }

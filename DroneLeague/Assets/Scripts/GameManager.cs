@@ -1,46 +1,71 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
 
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
+    [Header("Teams Targets (Goals)")]
+    public Transform goalTriggerA;
+    public Transform goalTriggerB;
+
+
     [Header("Match Settings")]
-    public int roundsToWin = 2; 
-    public float roundDuration = 120f; 
+    public int goalsToWinRound = 3; 
+    public float roundDuration = 60f;
+    public int totalRounds = 2;
+    [Tooltip("Delay after goal")]
+    public float delayAfterGoal = 3f;
 
     [Header("Teams")]
     public int teamAScore = 0;
     public int teamBScore = 0;
 
-    [Header("Current Round")]
-    public int currentRound = 1;
-    public float roundTimeRemaining;
-    public bool isRoundActive = false;
-    public bool isMatchOver = false;
-
     [Header("Spawn Points")]
-    public Transform[] teamASpawnPoints; 
-    public Transform[] teamBSpawnPoints; 
+    public Transform[] teamASpawns; 
+    public Transform[] teamBSpawns; 
 
     [Header("Drones")]
     public GameObject[] teamADrones; 
-    public GameObject[] teamBDrones; 
+    public GameObject[] teamBDrones;
+
+    [Header("Drones (Prefabs")]
+    public GameObject dronePrefabTeamA;
+    public GameObject dronePrefabTeamB;
+
 
     [Header("UI References")]
     public GameObject pauseMenu;
     public GameObject winnerScreen;
+    public TextMeshProUGUI winnerText;
 
-    public delegate void OnGoalScored(string teamName);
-    public static event OnGoalScored GoalScoredEvent;
+    [Header("Camera Reference")]
+    public CameraController mainCamera;
 
-    public delegate void OnRoundEnd(string winningTeam);
-    public static event OnRoundEnd RoundEndEvent;
-
-    public delegate void OnMatchEnd(string winningTeam);
-    public static event OnMatchEnd MatchEndEvent;
-
+    //Match Status
+    private static int winsTeamA = 0;
+    private static int winsTeamB = 0;
+    private int currentRound = 0;
     private bool isPaused = false;
+
+    //Current Round Timer
+    private float roundTimer;
+    private int scoreRoundA;
+    private int scoreRoundB;
+    private bool isRoundActive = false;
+
+
+    private List<DroneInstance> activeDrones = new List<DroneInstance>();
+
+    private class DroneInstance
+    {
+        public GameObject droneObject;
+        public Transform spawnPoint;
+        public Rigidbody rb;
+    }
 
     void Awake()
     {
@@ -58,155 +83,251 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        InitializeMatch();
-        StartRound();
+        Time.timeScale = 1f;
+        StartMatch();
+       
     }
 
     void Update()
     {
-        
-        if (Input.GetKeyDown(KeyCode.Escape))
+
+        if (Input.GetKeyDown(KeyCode.Escape) && !winnerScreen.activeSelf)
         {
             TogglePause();
         }
 
         if (isRoundActive && !isPaused)
         {
-            roundTimeRemaining -= Time.deltaTime;
+            roundTimer -= Time.deltaTime;
 
-            if (roundTimeRemaining <= 0)
+            if (roundTimer <= 0)
             {
-                roundTimeRemaining = 0;
-                EndRound(null); 
+                EndRound("TimeOut"); 
             }
+
         }
     }
 
-    void InitializeMatch()
+    public void StartMatch()
     {
-        teamAScore = 0;
-        teamBScore = 0;
-        currentRound = 1;
-        isMatchOver = false;
+
+        currentRound = 0;
+        Debug.Log($"Match Started! Global Score: A[{winsTeamA}] - B[{winsTeamB}]");
+        StartNextRound();
 
         if (pauseMenu != null) pauseMenu.SetActive(false);
         if (winnerScreen != null) winnerScreen.SetActive(false);
     }
 
-    public void StartRound()
+    public void StartNextRound()
     {
-        roundTimeRemaining = roundDuration;
-        isRoundActive = true;
+        currentRound++;
 
-        
-        ResetDronesToSpawn();
+        if (currentRound > totalRounds)
+        {
+            EndMatch();
+            return;
+        }
+
+        scoreRoundA = 0;
+        scoreRoundB = 0;
+        roundTimer = roundDuration;
 
         Debug.Log($"Round {currentRound} started!");
+        SpawnOrResetDrones();
+
+        StartCoroutine(GoalResetRoutine(false));
     }
 
-    void ResetDronesToSpawn()
+    void SpawnOrResetDrones()
     {
-        for (int i = 0; i < teamADrones.Length && i < teamASpawnPoints.Length; i++)
+        
+        foreach (var d in activeDrones)
         {
-            if (teamADrones[i] != null && teamASpawnPoints[i] != null)
-            {
-                teamADrones[i].transform.position = teamASpawnPoints[i].position;
-                teamADrones[i].transform.rotation = teamASpawnPoints[i].rotation;
+            if (d.droneObject != null) Destroy(d.droneObject);
+        }
+        activeDrones.Clear();
 
-                
-                Rigidbody rb = teamADrones[i].GetComponent<Rigidbody>();
-                if (rb != null)
-                {
-                    rb.linearVelocity = Vector3.zero;
-                    rb.angularVelocity = Vector3.zero;
-                }
-            }
+        if (mainCamera != null)
+        {
+            mainCamera.target = null;
         }
 
-        for (int i = 0; i < teamBDrones.Length && i < teamBSpawnPoints.Length; i++)
-        {
-            if (teamBDrones[i] != null && teamBSpawnPoints[i] != null)
-            {
-                teamBDrones[i].transform.position = teamBSpawnPoints[i].position;
-                teamBDrones[i].transform.rotation = teamBSpawnPoints[i].rotation;
+        SpawnTeam(teamASpawns, dronePrefabTeamA, "TeamA");
+        SpawnTeam(teamBSpawns, dronePrefabTeamB, "TeamB");
+    }
 
-                Rigidbody rb = teamBDrones[i].GetComponent<Rigidbody>();
-                if (rb != null)
+    void SpawnTeam(Transform[] spawns, GameObject prefab, string teamName)
+    {
+        for (int i = 0; i < spawns.Length; i++)
+        {
+            if (spawns[i] == null) continue;
+            GameObject newDrone = Instantiate(prefab, spawns[i].position, spawns[i].rotation);
+
+            DroneController droneCtrl = newDrone.GetComponent<DroneController>();
+            if (droneCtrl != null && mainCamera != null)
+            {
+                droneCtrl.cameraController = mainCamera;
+
+                bool isPlayer = (teamName == "TeamA" && i == 0);
+                droneCtrl.isHuman = isPlayer;
+                if (isPlayer)
                 {
-                    rb.linearVelocity = Vector3.zero;
-                    rb.angularVelocity = Vector3.zero;
+                    mainCamera.target = newDrone.transform;
+                    Debug.Log("Player spawned and linked to Camera!");
+
+                }
+                if (i == 0)
+                {
+                    droneCtrl.role = DroneRole.Attacker;
+                }
+                else
+                {
+                    droneCtrl.role = DroneRole.Defender;
                 }
             }
+
+
+            DroneInstance info = new DroneInstance();
+            info.droneObject = newDrone;
+            info.spawnPoint = spawns[i];
+            info.rb = newDrone.GetComponent<Rigidbody>();
+
+            if (!newDrone.CompareTag("Player")) newDrone.tag = "Player";
+            activeDrones.Add(info);
         }
     }
 
-    public void RegisterGoal(string teamName)
+
+    public void ScoreGoal(string teamScored)
     {
-        if (!isRoundActive || isMatchOver) return;
+        if (!isRoundActive) return;
+        isRoundActive = false;
 
-        if (teamName == "TeamA")
+        if (teamScored == "TeamA")
         {
-            teamAScore++;
-            Debug.Log($"Team A scored! Score: {teamAScore} - {teamBScore}");
+            scoreRoundA++;
+            Debug.Log($"GOAL Team A! Round score: {scoreRoundA}-{scoreRoundB}");
         }
-        else if (teamName == "TeamB")
+        else if(teamScored == "TeamB")
         {
-            teamBScore++;
-            Debug.Log($"Team B scored! Score: {teamAScore} - {teamBScore}");
-        }
+            scoreRoundB++;
+            Debug.Log($"GOAL Team B! Round score: {scoreRoundB}-{scoreRoundB}");
 
-        
-        GoalScoredEvent?.Invoke(teamName);
-
-        
-        if (teamAScore >= roundsToWin)
-        {
-            EndMatch("TeamA");
         }
-        else if (teamBScore >= roundsToWin)
+        if(scoreRoundA >= goalsToWinRound || scoreRoundB >= goalsToWinRound)
         {
-            EndMatch("TeamB");
+            EndRound("The Round is Over");
         }
         else
         {
-            
-            Invoke(nameof(ResetAfterGoal), 2f); 
+            StartCoroutine(GoalResetRoutine(true));
         }
     }
 
-    void ResetAfterGoal()
-    {
-        ResetDronesToSpawn();
-    }
-
-    void EndRound(string winningTeam)
+    IEnumerator GoalResetRoutine(bool wasGoal)
     {
         isRoundActive = false;
+        if (wasGoal) Debug.Log("Goal scored! Resetting positions in 3 seconds...");
 
-        Debug.Log($"Round {currentRound} ended! Winner: {(winningTeam != null ? winningTeam : "Draw")}");
+        SoftResetPositions(true);
+        Debug.Log("Wait for start...");
 
-        RoundEndEvent?.Invoke(winningTeam);
+        yield return new WaitForSeconds(delayAfterGoal);
 
-        if (!isMatchOver)
+        SoftResetPositions(false);
+        isRoundActive = true;
+        Debug.Log("GO!");
+    }
+
+    void SoftResetPositions(bool freeze)
+    {
+        foreach (var item in activeDrones)
         {
-            currentRound++;
-            Invoke(nameof(StartRound), 3f); 
+            if (item.droneObject == null) continue;
+            if(item.rb != null)
+            {
+                if (freeze)
+                {
+                    if (!item.rb.isKinematic)
+                    {
+                        item.rb.linearVelocity = Vector3.zero;
+                        item.rb.angularVelocity = Vector3.zero;
+                    }
+                    item.rb.isKinematic = true;
+                }
+                else
+                {
+                    item.rb.isKinematic = false;
+
+                    item.rb.linearVelocity = Vector3.zero;
+                    item.rb.angularVelocity = Vector3.zero;
+                }
+            }
+            item.droneObject.transform.position = item.spawnPoint.position;
+            item.droneObject.transform.rotation = item.spawnPoint.rotation;
         }
+        Physics.SyncTransforms();
+        Debug.Log("Positions reset after goal.");
     }
 
-    void EndMatch(string winningTeam)
+    void EndRound(string reason)
     {
-        isMatchOver = true;
         isRoundActive = false;
+        string winner = "Draw";
+        //Debug.Log($"Round {currentRound} ended!");
 
-        Debug.Log($"Match Over! {winningTeam} wins!");
-
-        MatchEndEvent?.Invoke(winningTeam);
-
-        if (winnerScreen != null)
+        //RoundEndEvent?.Invoke(winningTeam);
+        
+        if (scoreRoundA >= scoreRoundB)
         {
-            winnerScreen.SetActive(true);
-            
+            winsTeamA++;
+            winner = "Team A";
+        }
+        else if(scoreRoundB > scoreRoundA)
+        {
+            winsTeamB++;
+            winner = "Team B";
+        }
+
+        Debug.Log($"Round {currentRound} is over ({reason})! Winner round is: {winner}");
+        Debug.Log($"Current score by round -> A: {winsTeamA} | B: {winsTeamB}");
+
+        Invoke("StartNextRound", 3f);
+    }
+
+    void EndMatch()
+    {
+        Debug.Log("=== MATCH IS OVER ===");
+        string finalResult = "";
+        if(winsTeamA > winsTeamB)
+        {
+            finalResult = "TEAM A LEADS!";
+        }
+        else if(winsTeamB > winsTeamA)
+        {
+            finalResult = "TEAM B LEADS!";
+        }
+        else
+        {
+            finalResult = "DRAW!";
+        }
+
+        if(winnerText != null ) winnerText.text = finalResult;
+        if (winnerScreen != null) winnerScreen.SetActive(true);
+        Time.timeScale = 0f;
+        isRoundActive = false;
+    }
+    void OnGUI()
+    {
+        GUIStyle style = new GUIStyle();
+        style.fontSize = 20;
+        style.normal.textColor = Color.white;
+        if (isRoundActive)
+        {
+            GUI.Label(new Rect(10, 10, 300, 30), $"Round: {currentRound}/{totalRounds} | Time: {Mathf.Ceil(roundTimer)}", style);
+            GUI.Label(new Rect(10, 40, 300, 30), $"Round Score: A [{scoreRoundA}] - B [{scoreRoundB}]", style);
+            GUI.Label(new Rect(10, 70, 300, 30), $"Total Wins: A [{winsTeamA}] - B [{winsTeamB}]", style);
         }
     }
 
@@ -239,6 +360,8 @@ public class GameManager : MonoBehaviour
 
     public void ExitToMainMenu()
     {
+        winsTeamA = 0;
+        winsTeamB = 0;
         Time.timeScale = 1f;
         SceneManager.LoadScene("MainMenu");
     }
@@ -247,6 +370,9 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("Quitting game...");
         Application.Quit();
+       
+        //UnityEditor.EditorApplication.isPlaying = false;
+
     }
 
     public string GetScoreText()
@@ -256,8 +382,8 @@ public class GameManager : MonoBehaviour
 
     public string GetTimerText()
     {
-        int minutes = Mathf.FloorToInt(roundTimeRemaining / 60f);
-        int seconds = Mathf.FloorToInt(roundTimeRemaining % 60f);
+        int minutes = Mathf.FloorToInt(roundTimer / 60f);
+        int seconds = Mathf.FloorToInt(roundTimer % 60f);
         return $"{minutes:00}:{seconds:00}";
     }
 
@@ -265,4 +391,5 @@ public class GameManager : MonoBehaviour
     {
         return $"Round {currentRound}";
     }
+
 }
