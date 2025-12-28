@@ -6052,8 +6052,8 @@ MonoBehaviour:
   teamAScore: 0
   teamBScore: 0
   teamASpawns:
-  - {fileID: 543883019}
   - {fileID: 467931436}
+  - {fileID: 543883019}
   teamBSpawns:
   - {fileID: 535532400}
   - {fileID: 1936543434}
@@ -6065,8 +6065,9 @@ MonoBehaviour:
   dronePrefabTeamB: {fileID: 2983974663637610250, guid: 37c15c7c8ddcdbb4792e389ac45a6d36, type: 3}
   pauseMenu: {fileID: 1325016961}
   winnerScreen: {fileID: 988021752}
-  winnerText: {fileID: 283759427}
   teamSelectionMenu: {fileID: 1943583660}
+  winnerText: {fileID: 283759427}
+  globalScoreText: {fileID: 0}
   mainCamera: {fileID: 1781086598}
 --- !u!4 &1814955043
 Transform:

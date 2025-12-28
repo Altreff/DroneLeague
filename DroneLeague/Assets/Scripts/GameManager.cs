@@ -40,15 +40,18 @@ public class GameManager : MonoBehaviour
     [Header("UI References")]
     public GameObject pauseMenu;
     public GameObject winnerScreen;
-    public TextMeshProUGUI winnerText;
     public GameObject teamSelectionMenu;
+    public TextMeshProUGUI winnerText;
+    public TextMeshProUGUI globalScoreText;    
 
     [Header("Camera Reference")]
     public CameraController mainCamera;
 
     //Match Status
-    private static int winsTeamA = 0;
-    private static int winsTeamB = 0;
+    private static int globalMatchesWonA = 0;
+    private static int globalMatchesWonB = 0;
+    private int currentMatchRoundsA = 0;
+    private int currentMatchRoundsB = 0;
     private int currentRound = 0;
     private bool isPaused = false;
 
@@ -90,13 +93,11 @@ public class GameManager : MonoBehaviour
         if (teamSelectionMenu != null)
         {
             teamSelectionMenu.SetActive(true);
-
             if(pauseMenu != null) pauseMenu.SetActive(false);
             if(winnerScreen !=null) winnerScreen.SetActive(false);
         }
         else
         {
-            Debug.LogWarning("Team Selection Menu not assigned! Defaulting to Team A.");
             ChooseTeam("TeamA");
         }
     }
@@ -113,7 +114,7 @@ public class GameManager : MonoBehaviour
     void Update()
     {
 
-        if (Input.GetKeyDown(KeyCode.Escape) && !winnerScreen.activeSelf)
+        if (Input.GetKeyDown(KeyCode.Escape) && !winnerScreen.activeSelf && (teamSelectionMenu == null || !teamSelectionMenu.activeSelf))
         {
             TogglePause();
         }
@@ -134,7 +135,7 @@ public class GameManager : MonoBehaviour
     {
 
         currentRound = 0;
-        Debug.Log($"Match Started! Global Score: A[{winsTeamA}] - B[{winsTeamB}]");
+        Debug.Log($"Match Started! Global Score: A[{globalMatchesWonA}] - B[{globalMatchesWonB}]");
         StartNextRound();
 
         if (pauseMenu != null) pauseMenu.SetActive(false);
@@ -297,23 +298,20 @@ public class GameManager : MonoBehaviour
     {
         isRoundActive = false;
         string winner = "Draw";
-        //Debug.Log($"Round {currentRound} ended!");
-
-        //RoundEndEvent?.Invoke(winningTeam);
         
         if (scoreRoundA >= scoreRoundB)
         {
-            winsTeamA++;
+            currentMatchRoundsA++;
             winner = "Team A";
         }
         else if(scoreRoundB > scoreRoundA)
         {
-            winsTeamB++;
+            currentMatchRoundsB++;
             winner = "Team B";
         }
 
         Debug.Log($"Round {currentRound} is over ({reason})! Winner round is: {winner}");
-        Debug.Log($"Current score by round -> A: {winsTeamA} | B: {winsTeamB}");
+        Debug.Log($"Current score by round -> A: {currentMatchRoundsA} | B: {currentMatchRoundsB}");
 
         Invoke("StartNextRound", 3f);
     }
@@ -322,13 +320,15 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("=== MATCH IS OVER ===");
         string finalResult = "";
-        if(winsTeamA > winsTeamB)
+        if(currentMatchRoundsA > currentMatchRoundsB)
         {
-            finalResult = "TEAM A LEADS!";
+            finalResult = "TEAM A WINS THE MATCH!";
+            globalMatchesWonA++;
         }
-        else if(winsTeamB > winsTeamA)
+        else if(currentMatchRoundsB > currentMatchRoundsA)
         {
-            finalResult = "TEAM B LEADS!";
+            finalResult = "TEAM B WINS THE MATCH";
+            globalMatchesWonB++;
         }
         else
         {
@@ -336,6 +336,11 @@ public class GameManager : MonoBehaviour
         }
 
         if(winnerText != null ) winnerText.text = finalResult;
+        if(globalScoreText != null)
+        {
+            globalScoreText.text = $"Session History: A[{globalMatchesWonA}] - B[{globalMatchesWonB}]";
+        }
+
         if (winnerScreen != null) winnerScreen.SetActive(true);
         Time.timeScale = 0f;
         isRoundActive = false;
@@ -343,13 +348,14 @@ public class GameManager : MonoBehaviour
     void OnGUI()
     {
         GUIStyle style = new GUIStyle();
-        style.fontSize = 20;
+        style.fontSize = 14;
         style.normal.textColor = Color.white;
         if (isRoundActive)
         {
             GUI.Label(new Rect(10, 10, 300, 30), $"Round: {currentRound}/{totalRounds} | Time: {Mathf.Ceil(roundTimer)}", style);
             GUI.Label(new Rect(10, 40, 300, 30), $"Round Score: A [{scoreRoundA}] - B [{scoreRoundB}]", style);
-            GUI.Label(new Rect(10, 70, 300, 30), $"Total Wins: A [{winsTeamA}] - B [{winsTeamB}]", style);
+            GUI.Label(new Rect(10, 70, 300, 30), $"Match Rounds: A [{currentMatchRoundsA}] - B [{currentMatchRoundsB}]", style);
+            GUI.Label(new Rect(10, 100, 300, 30), $"Total Wins: A [{globalMatchesWonA}] - B [{globalMatchesWonB}]", style);
         }
     }
 
@@ -382,8 +388,8 @@ public class GameManager : MonoBehaviour
 
     public void ExitToMainMenu()
     {
-        winsTeamA = 0;
-        winsTeamB = 0;
+        globalMatchesWonA = 0;
+        globalMatchesWonB = 0;
         Time.timeScale = 1f;
         SceneManager.LoadScene("MainMenu");
     }
