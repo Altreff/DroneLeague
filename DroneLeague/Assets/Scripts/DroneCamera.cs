@@ -4,8 +4,6 @@ public class CameraController : MonoBehaviour
 {
     [Header("Target")]
     public Transform target;          // DroneRigid here
-    public Vector3 offset = new Vector3(0, 4, -8);
-    public float smoothSpeed = 5f;
 
     [Header("Camera Offset")]
     public float distance = 8f;       // how far behind the drone

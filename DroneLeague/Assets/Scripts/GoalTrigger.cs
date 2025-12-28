@@ -3,29 +3,21 @@ using UnityEngine;
 public class GoalTrigger : MonoBehaviour
 {
     [Header("Goal Settings")]
-    public string teamToScore = "TeamA";
+    public string teamToAwardPoint = "TeamA";
 
-    /*   
-    void Awake()
-    {
-        // Убедитесь, что у ворот есть триггер
-        Collider col = GetComponent<Collider>();
-        if (col != null)
-        {
-            col.isTrigger = true;
-        }
-
-    }
-    */
+    private float lastScoreTime = -5f;
+    private float cooldown = 1.0f;
 
     void OnTriggerEnter(Collider other)
     {
+        if (Time.time < lastScoreTime + cooldown) return;
 
         if (other.CompareTag("Player"))
         {
-            Debug.Log($"GOAL! {teamToScore} scores");
+            GameManager.Instance.ScoreGoal(teamToAwardPoint);
 
-            GameManager.Instance.ScoreGoal(teamToScore);
+            lastScoreTime = Time.time;
+            Debug.Log($"GOAL! Scored for {teamToAwardPoint}. Ring disabled for 1 sec.");
         }
     }
 }

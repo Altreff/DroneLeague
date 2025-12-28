@@ -31,10 +31,14 @@ public class GameManager : MonoBehaviour
     [Header("Drones")]
     public GameObject[] teamADrones; 
     public GameObject[] teamBDrones;
-
-    [Header("Drones (Prefabs")]
     public GameObject dronePrefabTeamA;
     public GameObject dronePrefabTeamB;
+
+
+    [Header("Drones (Prefabs")]
+    public GameObject playerPrefab;
+    public GameObject strikerPrefab;
+    public GameObject defenderPrefab;
 
 
     [Header("UI References")]
@@ -72,6 +76,9 @@ public class GameManager : MonoBehaviour
         public Rigidbody rb;
     }
 
+    private GateTarget gateTargetA;
+    private GateTarget gateTargetB;
+
     void Awake()
     {
      
@@ -89,6 +96,18 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         Time.timeScale = 1f;
+
+        if(goalTriggerA != null)
+        {
+            gateTargetA = goalTriggerA.GetComponent<GateTarget>();
+            if(gateTargetA == null) gateTargetA = gateTargetA.gameObject.AddComponent<GateTarget>();
+        }
+
+        if (goalTriggerB != null)
+        {
+            gateTargetB = goalTriggerB.GetComponent<GateTarget>();
+            if( gateTargetB == null) gateTargetB =gateTargetB.gameObject.AddComponent<GateTarget>();
+        }
 
         if (teamSelectionMenu != null)
         {
@@ -176,47 +195,76 @@ public class GameManager : MonoBehaviour
             mainCamera.target = null;
         }
 
-        SpawnTeam(teamASpawns, dronePrefabTeamA, "TeamA");
-        SpawnTeam(teamBSpawns, dronePrefabTeamB, "TeamB");
+        SpawnTeam(teamASpawns, "TeamA", gateTargetB, gateTargetA);
+        SpawnTeam(teamBSpawns, "TeamB", gateTargetA, gateTargetB);
     }
 
-    void SpawnTeam(Transform[] spawns, GameObject prefab, string teamName)
+    void SpawnTeam(Transform[] spawns, string teamName, GateTarget attackGate, GateTarget defendGate)
     {
         for (int i = 0; i < spawns.Length; i++)
         {
             if (spawns[i] == null) continue;
-            GameObject newDrone = Instantiate(prefab, spawns[i].position, spawns[i].rotation);
 
-            DroneController droneCtrl = newDrone.GetComponent<DroneController>();
-            if (droneCtrl != null && mainCamera != null)
+            // 1. Выбор префаба
+            GameObject prefabToUse = defenderPrefab;
+            bool isPlayer = (teamName == playerChosenTeam && i == 0);
+
+            if (isPlayer)
+                prefabToUse = playerPrefab;
+            else if (i == 0)
+                prefabToUse = strikerPrefab;
+
+            if (prefabToUse == null)
+                prefabToUse = (teamName == "TeamA") ? dronePrefabTeamA : dronePrefabTeamB;
+
+            // 2. Создаем объект (это "Коробка" дрона)
+            GameObject newDroneRoot = Instantiate(prefabToUse, spawns[i].position, spawns[i].rotation);
+
+            // --- ИСПРАВЛЕНИЕ 1: Ищем компоненты ВНУТРИ коробки (InChildren) ---
+            Rigidbody rb = newDroneRoot.GetComponentInChildren<Rigidbody>();
+            if (rb != null)
             {
-                droneCtrl.cameraController = mainCamera;
+                rb.isKinematic = true; // Теперь заморозка сработает!
+            }
 
-                bool isPlayer = (teamName == playerChosenTeam && i == 0);
-                droneCtrl.isHuman = isPlayer;
+            DroneController droneCtrl = newDroneRoot.GetComponentInChildren<DroneController>();
+
+            if (droneCtrl != null)
+            {
                 if (isPlayer)
                 {
-                    mainCamera.target = newDrone.transform;
-                    Debug.Log("Player spawned and linked to Camera!");
-
-                }
-                if (i == 0)
-                {
-                    droneCtrl.role = DroneRole.Attacker;
+                    droneCtrl.controlMode = DroneControlMode.Player;
+                    if (mainCamera != null)
+                    {
+                        // --- ИСПРАВЛЕНИЕ 2: Привязываем камеру к САМОМУ ДРОНУ, а не к коробке
+                        mainCamera.target = droneCtrl.transform;
+                        droneCtrl.cameraController = mainCamera;
+                        Debug.Log($">>> SUCCESS: Camera linked to {droneCtrl.name}!");
+                    }
                 }
                 else
                 {
-                    droneCtrl.role = DroneRole.Defender;
+                    droneCtrl.controlMode = DroneControlMode.AI;
+
+                    var strikerAI = newDroneRoot.GetComponentInChildren<DroneStrikerAI>();
+                    if (strikerAI != null) strikerAI.targetGate = attackGate;
+
+                    var defenderAI = newDroneRoot.GetComponentInChildren<DroneDefenderAI>();
+                    if (defenderAI != null) defenderAI.defendGate = defendGate;
                 }
             }
 
-
             DroneInstance info = new DroneInstance();
-            info.droneObject = newDrone;
+            info.droneObject = newDroneRoot;
             info.spawnPoint = spawns[i];
-            info.rb = newDrone.GetComponent<Rigidbody>();
+            info.rb = rb;
 
-            if (!newDrone.CompareTag("Player")) newDrone.tag = "Player";
+            // Тег вешаем на саму физическую тушку
+            if (droneCtrl != null && !droneCtrl.gameObject.CompareTag("Player"))
+            {
+                droneCtrl.gameObject.tag = "Player";
+            }
+
             activeDrones.Add(info);
         }
     }
@@ -251,18 +299,49 @@ public class GameManager : MonoBehaviour
     IEnumerator GoalResetRoutine(bool wasGoal)
     {
         isRoundActive = false;
-        if (wasGoal) Debug.Log("Goal scored! Resetting positions in 3 seconds...");
+        if (wasGoal)
+        {
+            FreezeAllDrones();
+            yield return new WaitForSeconds(delayAfterGoal);
 
-        SoftResetPositions(true);
-        Debug.Log("Wait for start...");
+            Debug.Log("Respawning teams...");
+            SpawnOrResetDrones();
+        }
+        else
+        {
+            Debug.Log("Wait for start...");
+            yield return new WaitForSeconds(delayAfterGoal);
+        }
 
-        yield return new WaitForSeconds(delayAfterGoal);
-
-        SoftResetPositions(false);
+        UnfreezeAllDrones();
         isRoundActive = true;
         Debug.Log("GO!");
     }
 
+    void UnfreezeAllDrones()
+    {
+        foreach (var item in activeDrones)
+        {
+            if(item.rb != null)
+            {
+                item.rb.isKinematic = false;
+            }
+        }
+    }
+    void FreezeAllDrones()
+    {
+        foreach (var item in activeDrones)
+        {
+            if (item.droneObject == null) continue;
+            if (item.rb != null)
+            {
+                item.rb.linearVelocity = Vector3.zero;
+                item.rb.angularVelocity = Vector3.zero;
+                item.rb.isKinematic = true;
+            }
+        }
+    }
+    /*
     void SoftResetPositions(bool freeze)
     {
         foreach (var item in activeDrones)
@@ -282,7 +361,6 @@ public class GameManager : MonoBehaviour
                 else
                 {
                     item.rb.isKinematic = false;
-
                     item.rb.linearVelocity = Vector3.zero;
                     item.rb.angularVelocity = Vector3.zero;
                 }
@@ -293,7 +371,7 @@ public class GameManager : MonoBehaviour
         Physics.SyncTransforms();
         Debug.Log("Positions reset after goal.");
     }
-
+    */
     void EndRound(string reason)
     {
         isRoundActive = false;
