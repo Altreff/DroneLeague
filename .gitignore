@@ -75,3 +75,4 @@ DroneLeague/Library/*
 **/[LL]ogs/
 
 *.log
+/DroneLeague/Temp
