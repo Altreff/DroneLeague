@@ -41,6 +41,7 @@ public class GameManager : MonoBehaviour
     public GameObject pauseMenu;
     public GameObject winnerScreen;
     public TextMeshProUGUI winnerText;
+    public GameObject teamSelectionMenu;
 
     [Header("Camera Reference")]
     public CameraController mainCamera;
@@ -57,6 +58,7 @@ public class GameManager : MonoBehaviour
     private int scoreRoundB;
     private bool isRoundActive = false;
 
+    private string playerChosenTeam = "";
 
     private List<DroneInstance> activeDrones = new List<DroneInstance>();
 
@@ -84,9 +86,29 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         Time.timeScale = 1f;
-        StartMatch();
-       
+
+        if (teamSelectionMenu != null)
+        {
+            teamSelectionMenu.SetActive(true);
+
+            if(pauseMenu != null) pauseMenu.SetActive(false);
+            if(winnerScreen !=null) winnerScreen.SetActive(false);
+        }
+        else
+        {
+            Debug.LogWarning("Team Selection Menu not assigned! Defaulting to Team A.");
+            ChooseTeam("TeamA");
+        }
     }
+    public void ChooseTeam(string teamName)
+    {
+        playerChosenTeam = teamName;
+        Debug.Log($"Player chose: {playerChosenTeam}");
+        if(teamSelectionMenu!=null) teamSelectionMenu.SetActive(false);
+        StartMatch();
+
+    }
+
 
     void Update()
     {
@@ -169,7 +191,7 @@ public class GameManager : MonoBehaviour
             {
                 droneCtrl.cameraController = mainCamera;
 
-                bool isPlayer = (teamName == "TeamA" && i == 0);
+                bool isPlayer = (teamName == playerChosenTeam && i == 0);
                 droneCtrl.isHuman = isPlayer;
                 if (isPlayer)
                 {
