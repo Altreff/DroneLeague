@@ -6,6 +6,7 @@ TagManager:
   tags:
   - TeamA
   - TeamB
+  - DroneAI
   layers:
   - Default
   - TransparentFX

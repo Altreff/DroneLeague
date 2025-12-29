@@ -14,6 +14,12 @@ public class GameManager : MonoBehaviour
     public Transform teamBAttackGate;
     public Transform teamBDefendGate;
 
+    // Новые поля для хранения GateTarget
+    private GateTarget teamAAttackGateComp;
+    private GateTarget teamADefendGateComp;
+    private GateTarget teamBAttackGateComp;
+    private GateTarget teamBDefendGateComp;
+
     [Header("Match Settings")]
     public int goalsToWinRound = 3;
     public float roundDuration = 60f;
@@ -43,21 +49,25 @@ public class GameManager : MonoBehaviour
     public GameObject teamSelectionMenu;
     public TextMeshProUGUI winnerText;
     public TextMeshProUGUI globalScoreText;
+    public TextMeshProUGUI ScorePanel;
+    public GameObject ScorePanelObject;
+    public GameObject HUD;
+
 
     [Header("Camera Reference")]
     public CameraController mainCamera;
 
-    private static int globalMatchesWonA = 0;
-    private static int globalMatchesWonB = 0;
-    private int currentMatchRoundsA = 0;
-    private int currentMatchRoundsB = 0;
-    private int currentRound = 0;
+    public static int globalMatchesWonA = 0;
+    public static int globalMatchesWonB = 0;
+    public int currentMatchRoundsA = 0;
+    public int currentMatchRoundsB = 0;
+    public int currentRound = 0;
     private bool isPaused = false;
 
-    private float roundTimer;
-    private int scoreRoundA;
-    private int scoreRoundB;
-    private bool isRoundActive = false;
+    public float roundTimer;
+    public int scoreRoundA;
+    public int scoreRoundB;
+    public bool isRoundActive = false;
 
     private string playerChosenTeam = "";
 
@@ -80,6 +90,32 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         Time.timeScale = 1f;
+
+        // Проверка и создание GateTarget на воротах
+        if (teamAAttackGate != null)
+        {
+            teamAAttackGateComp = teamAAttackGate.GetComponent<GateTarget>();
+            if (teamAAttackGateComp == null)
+                teamAAttackGateComp = teamAAttackGate.gameObject.AddComponent<GateTarget>();
+        }
+        if (teamADefendGate != null)
+        {
+            teamADefendGateComp = teamADefendGate.GetComponent<GateTarget>();
+            if (teamADefendGateComp == null)
+                teamADefendGateComp = teamADefendGate.gameObject.AddComponent<GateTarget>();
+        }
+        if (teamBAttackGate != null)
+        {
+            teamBAttackGateComp = teamBAttackGate.GetComponent<GateTarget>();
+            if (teamBAttackGateComp == null)
+                teamBAttackGateComp = teamBAttackGate.gameObject.AddComponent<GateTarget>();
+        }
+        if (teamBDefendGate != null)
+        {
+            teamBDefendGateComp = teamBDefendGate.GetComponent<GateTarget>();
+            if (teamBDefendGateComp == null)
+                teamBDefendGateComp = teamBDefendGate.gameObject.AddComponent<GateTarget>();
+        }
 
         if (teamSelectionMenu != null)
         {
@@ -114,6 +150,11 @@ public class GameManager : MonoBehaviour
             if (roundTimer <= 0) EndRound("TimeOut");
         }
     }
+    private AIDifficulty GetCurrentDifficulty()
+{
+    int saved = PlayerPrefs.GetInt("Difficulty", (int)AIDifficulty.Medium);
+    return (AIDifficulty)saved;
+}
 
     public void StartMatch()
     {
@@ -122,6 +163,7 @@ public class GameManager : MonoBehaviour
         StartNextRound();
         if (pauseMenu != null) pauseMenu.SetActive(false);
         if (winnerScreen != null) winnerScreen.SetActive(false);
+        HUD.SetActive(true);
     }
 
     public void StartNextRound()
@@ -150,76 +192,109 @@ public class GameManager : MonoBehaviour
         }
         activeDrones.Clear();
 
-        SpawnTeam(teamASpawns, "TeamA", teamAAttackGate, teamADefendGate, teamAMaterial);
-        SpawnTeam(teamBSpawns, "TeamB", teamBAttackGate, teamBDefendGate, teamBMaterial);
+        SpawnTeam(teamASpawns, "TeamA", teamAAttackGateComp, teamADefendGateComp, teamAMaterial);
+        SpawnTeam(teamBSpawns, "TeamB", teamBAttackGateComp, teamBDefendGateComp, teamBMaterial);
 
         AssignThreatTargets();
     }
 
-    void SpawnTeam(Transform[] spawns, string teamName, Transform attackGate, Transform defendGate, Material teamMaterial)
+    void SpawnTeam(
+    Transform[] spawns,
+    string teamName,
+    GateTarget attackGate,
+    GateTarget defendGate,
+    Material teamMaterial)
+{
+    AIDifficulty currentDifficulty = GetCurrentDifficulty();
+
+    for (int i = 0; i < spawns.Length; i++)
     {
-        for (int i = 0; i < spawns.Length; i++)
+        if (spawns[i] == null) continue;
+
+        GameObject prefabToUse = defenderPrefab;
+        bool isPlayer = (teamName == playerChosenTeam && i == 0);
+
+        if (isPlayer) prefabToUse = playerPrefab;
+        else if (i == 0) prefabToUse = strikerPrefab;
+
+        if (prefabToUse == null) prefabToUse = defenderPrefab;
+
+        GameObject newDroneRoot =
+            Instantiate(prefabToUse, spawns[i].position, spawns[i].rotation);
+
+        Rigidbody rb = newDroneRoot.GetComponentInChildren<Rigidbody>();
+        if (rb != null) rb.isKinematic = true;
+
+        // Теги
+        newDroneRoot.tag = isPlayer ? "Player" : "DroneAI";
+
+        DroneController droneCtrl =
+            newDroneRoot.GetComponentInChildren<DroneController>();
+
+        if (droneCtrl != null)
         {
-            if (spawns[i] == null) continue;
-
-            GameObject prefabToUse = defenderPrefab;
-            bool isPlayer = (teamName == playerChosenTeam && i == 0);
-
-            if (isPlayer) prefabToUse = playerPrefab;
-            else if (i == 0) prefabToUse = strikerPrefab;
-
-            if (prefabToUse == null) prefabToUse = defenderPrefab;
-
-            GameObject newDroneRoot = Instantiate(prefabToUse, spawns[i].position, spawns[i].rotation);
-            Rigidbody rb = newDroneRoot.GetComponentInChildren<Rigidbody>();
-            if (rb != null) rb.isKinematic = true;
-
-            DroneController droneCtrl = newDroneRoot.GetComponentInChildren<DroneController>();
-
-            // Игрок
-            if (isPlayer && droneCtrl != null)
+            if (isPlayer)
             {
                 droneCtrl.controlMode = DroneControlMode.Player;
+
                 if (mainCamera != null)
                 {
                     mainCamera.target = droneCtrl.transform;
                     droneCtrl.cameraController = mainCamera;
                 }
             }
-            else if (droneCtrl != null)
+            else
             {
-                // AI-дрон
+                // ---------- AI ----------
                 droneCtrl.controlMode = DroneControlMode.AI;
+
+               
+                DroneAIBrain brain =
+                    newDroneRoot.GetComponentInChildren<DroneAIBrain>();
+
+                if (brain != null)
+                {
+                    brain.difficulty = currentDifficulty;
+
+                    // принудительно применяем параметры
+                    brain.SendMessage(
+                        "SetupDifficulty",
+                        SendMessageOptions.DontRequireReceiver
+                    );
+                }
+
+                // Назначение ролей
                 if (i == 0)
                 {
-                    var strikerAI = newDroneRoot.GetComponentInChildren<DroneStrikerAI>();
+                    var strikerAI =
+                        newDroneRoot.GetComponentInChildren<DroneStrikerAI>();
                     if (strikerAI != null && attackGate != null)
-                    {
-                        GateTarget gateComp = attackGate.GetComponent<GateTarget>();
-                        if (gateComp != null) strikerAI.targetGate = gateComp;
-                    }
+                        strikerAI.targetGate = attackGate;
                 }
                 else
                 {
-                    var defenderAI = newDroneRoot.GetComponentInChildren<DroneDefenderAI>();
+                    var defenderAI =
+                        newDroneRoot.GetComponentInChildren<DroneDefenderAI>();
                     if (defenderAI != null && defendGate != null)
-                    {
-                        GateTarget gateComp = defendGate.GetComponent<GateTarget>();
-                        if (gateComp != null) defenderAI.defendGate = gateComp;
-                    }
+                        defenderAI.defendGate = defendGate;
                 }
             }
-
-            ApplyTeamMaterialToDrone(newDroneRoot, teamMaterial);
-
-            DroneInstance info = new DroneInstance();
-            info.droneObject = newDroneRoot;
-            info.spawnPoint = spawns[i];
-            info.rb = rb;
-            info.teamName = teamName;
-            activeDrones.Add(info);
         }
+
+        ApplyTeamMaterialToDrone(newDroneRoot, teamMaterial);
+
+        DroneInstance info = new DroneInstance
+        {
+            droneObject = newDroneRoot,
+            spawnPoint = spawns[i],
+            rb = rb,
+            teamName = teamName
+        };
+
+        activeDrones.Add(info);
     }
+}
+
 
     private void ApplyTeamMaterialToDrone(GameObject droneRoot, Material teamMaterial)
     {
@@ -276,8 +351,17 @@ public class GameManager : MonoBehaviour
         if (!isRoundActive) return;
         isRoundActive = false;
 
-        if (teamScored == "TeamA") scoreRoundA++;
-        else if (teamScored == "TeamB") scoreRoundB++;
+        if (teamScored == "TeamA") 
+        {
+            scoreRoundA++;
+            ScorePanel.text = $"Goal Scored by Team A! Current Round Score: A [{scoreRoundA}] - B [{scoreRoundB}]";
+            ScorePanelObject.SetActive(true);  
+        }
+        else if (teamScored == "TeamB") {
+            scoreRoundB++;
+            ScorePanel.text = $"Goal Scored by Team B! Current Round Score: A [{scoreRoundA}] - B [{scoreRoundB}]";
+            ScorePanelObject.SetActive(true);
+        }
 
         if (scoreRoundA >= goalsToWinRound || scoreRoundB >= goalsToWinRound)
             EndRound("The Round is Over");
@@ -290,7 +374,7 @@ public class GameManager : MonoBehaviour
         isRoundActive = false;
         if (wasGoal) { FreezeAllDrones(); yield return new WaitForSeconds(delayAfterGoal); SpawnOrResetDrones(); }
         else yield return new WaitForSeconds(delayAfterGoal);
-
+        ScorePanelObject.SetActive(false);
         UnfreezeAllDrones();
         isRoundActive = true;
     }
@@ -331,6 +415,7 @@ public class GameManager : MonoBehaviour
 
     void EndMatch()
     {
+        ScorePanelObject.SetActive(false);
         string finalResult = "";
         if (currentMatchRoundsA > currentMatchRoundsB) { finalResult = "TEAM A WINS THE MATCH!"; globalMatchesWonA++; }
         else if (currentMatchRoundsB > currentMatchRoundsA) { finalResult = "TEAM B WINS THE MATCH"; globalMatchesWonB++; }
@@ -348,7 +433,11 @@ public class GameManager : MonoBehaviour
     public void TogglePause()
     {
         isPaused = !isPaused;
-        if (pauseMenu != null) pauseMenu.SetActive(isPaused);
+        if (pauseMenu != null) 
+        {
+            pauseMenu.SetActive(isPaused);
+            HUD.SetActive(!isPaused);
+        }
         Time.timeScale = isPaused ? 0f : 1f;
     }
 
@@ -364,6 +453,7 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 1f;
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
+
 
     public void ExitToMainMenu()
     {
@@ -381,4 +471,6 @@ public class GameManager : MonoBehaviour
     public string GetScoreText() => $"{teamAScore} - {teamBScore}";
     public string GetTimerText() { int minutes = Mathf.FloorToInt(roundTimer / 60f); int seconds = Mathf.FloorToInt(roundTimer % 60f); return $"{minutes:00}:{seconds:00}"; }
     public string GetRoundText() => $"Round {currentRound}";
+   
+
 }
