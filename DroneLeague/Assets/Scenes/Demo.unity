@@ -366,7 +366,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 61147a67484b17d4880602d951bcc17b, type: 2}
+  - {fileID: 2100000, guid: 3e282fda930549d41ab3e3c2faf91352, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -8518,7 +8518,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 3e282fda930549d41ab3e3c2faf91352, type: 2}
+  - {fileID: 2100000, guid: 61147a67484b17d4880602d951bcc17b, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -14593,8 +14593,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7464df71acd23d04b8edce3c4322affc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  goalTriggerA: {fileID: 87324675}
-  goalTriggerB: {fileID: 1721386485}
+  teamAAttackGate: {fileID: 1721386485}
+  teamADefendGate: {fileID: 87324675}
+  teamBAttackGate: {fileID: 87324675}
+  teamBDefendGate: {fileID: 1721386485}
   goalsToWinRound: 3
   roundDuration: 60
   totalRounds: 2
@@ -14607,15 +14609,11 @@ MonoBehaviour:
   teamBSpawns:
   - {fileID: 535532400}
   - {fileID: 1936543434}
-  teamADrones:
-  - {fileID: 3084517509777784037, guid: f4e0764661ec61c40bd071f69ae65c59, type: 3}
-  teamBDrones:
-  - {fileID: 3084517509777784037, guid: f4e0764661ec61c40bd071f69ae65c59, type: 3}
-  dronePrefabTeamA: {fileID: 2983974663637610250, guid: 37c15c7c8ddcdbb4792e389ac45a6d36, type: 3}
-  dronePrefabTeamB: {fileID: 2983974663637610250, guid: 37c15c7c8ddcdbb4792e389ac45a6d36, type: 3}
   playerPrefab: {fileID: 2348135313248977802, guid: ce36bee07457ffc45831a39cf7dcc868, type: 3}
   strikerPrefab: {fileID: 545207061750444909, guid: 3e7c4b583ba195948bc7f16501f5c4b7, type: 3}
   defenderPrefab: {fileID: 3287394293604062781, guid: 5012c979a30a7d043861f909e47fd8d8, type: 3}
+  teamAMaterial: {fileID: 2100000, guid: 3c0c8d01dd42294409ccb69f301f2366, type: 2}
+  teamBMaterial: {fileID: 2100000, guid: 2ca266a42e6367d428ec8cc392305c63, type: 2}
   pauseMenu: {fileID: 1325016961}
   winnerScreen: {fileID: 988021752}
   teamSelectionMenu: {fileID: 1943583660}
