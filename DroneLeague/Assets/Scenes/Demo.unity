@@ -7208,6 +7208,7 @@ GameObject:
   - component: {fileID: 519722241}
   - component: {fileID: 519722240}
   - component: {fileID: 519722239}
+  - component: {fileID: 519722242}
   m_Layer: 5
   m_Name: QuitButton
   m_TagString: Untagged
@@ -7242,7 +7243,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 519722237}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
   m_Name: 
@@ -7279,8 +7280,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1814955042}
-        m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
+      - m_Target: {fileID: 519722242}
+        m_TargetAssemblyTypeName: ExitButton, Assembly-CSharp
         m_MethodName: QuitGame
         m_Mode: 1
         m_Arguments:
@@ -7329,6 +7330,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 519722237}
   m_CullTransparentMesh: 1
+--- !u!114 &519722242
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 519722237}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b12c81a5d150f349a17d2f0ae897ba4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &525086982 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -6175256964954202131, guid: 562d201c5cd6628448f6168a38327d56, type: 3}
