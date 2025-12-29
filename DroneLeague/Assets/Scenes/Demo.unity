@@ -291,7 +291,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 995fe397f8f635744bff116880dd8e62, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  teamToAwardPoint: TeamA
+  teamToAwardPoint: TeamB
 --- !u!65 &87324669
 BoxCollider:
   m_ObjectHideFlags: 0
