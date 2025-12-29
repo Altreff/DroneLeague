@@ -12,10 +12,8 @@ public class GoalTrigger : MonoBehaviour
     {
         if (Time.time < lastScoreTime + cooldown) return;
 
-        // Берём корень объекта, чтобы точно определить тег
         GameObject rootObj = other.transform.root.gameObject;
 
-        // Считаем гол для игрока или AI дронов
         if (rootObj.CompareTag("Player") || rootObj.CompareTag("DroneAI"))
         {
             GameManager.Instance.ScoreGoal(teamToAwardPoint);

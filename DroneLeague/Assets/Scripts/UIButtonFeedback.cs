@@ -18,10 +18,10 @@ public class UIButtonFeedback : MonoBehaviour,
     public Color hoverColor = new Color(0.45f, 0.25f, 0.9f);
 
     [Header("Outline / Glow")]
-    public float glowAlpha = 0.6f;           // базовый при hover
-    public float pressedGlowAlpha = 0.9f;    // при клике
-    public float pulseSpeed = 3f;            // скорость пульсации
-    public float pulseAmount = 0.15f;        // амплитуда пульсации
+    public float glowAlpha = 0.6f;           
+    public float pressedGlowAlpha = 0.9f;    
+    public float pulseSpeed = 3f;           
+    public float pulseAmount = 0.15f;        
 
     [Header("Sounds")]
     public AudioClip hoverSound;

@@ -6,7 +6,7 @@ public class MenuButtonSlideX : MonoBehaviour
 {
     public float delay = 0f;
     public float duration = 0.45f;
-    public float offscreenOffset = 300f; // насколько за экран уезжает
+    public float offscreenOffset = 300f; 
 
     CanvasGroup canvasGroup;
     RectTransform rect;

@@ -1,5 +1,5 @@
 using UnityEngine;
-using TMPro; // Важно!
+using TMPro; 
 
 public class UITextPulse : MonoBehaviour
 {
@@ -9,7 +9,7 @@ public class UITextPulse : MonoBehaviour
     public Color normalColor = Color.white;
     public Color pulseColor = new Color(0.8f, 0.3f, 1f);
 
-    TMP_Text txt; // TextMeshProUGUI
+    TMP_Text txt; 
     float pulse;
 
     void Awake()

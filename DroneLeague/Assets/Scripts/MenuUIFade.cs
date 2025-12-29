@@ -41,7 +41,7 @@ public class MenuUIFade : MonoBehaviour
         canvasGroup.alpha = target;
     }
 
-    // Новый метод для PlayGame с задержкой
+  
     public void PlayGame(string sceneName)
     {
         StartCoroutine(FadeAndLoad(sceneName));
@@ -49,13 +49,11 @@ public class MenuUIFade : MonoBehaviour
 
     IEnumerator FadeAndLoad(string sceneName)
     {
-        // Сначала fade
+
         yield return StartCoroutine(Fade(1f, fadeOutDuration));
 
-        // Можно добавить дополнительную задержку, если нужно
-        // yield return new WaitForSeconds(0.2f);
 
-        // Загружаем сцену
+
         SceneManager.LoadScene(sceneName);
     }
 }
